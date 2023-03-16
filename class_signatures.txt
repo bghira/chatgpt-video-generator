@@ -1,3 +1,13 @@
+Class: ElevenLabsApi
+__construct($apiKey)
+getHistory()
+getAudioFromHistoryItem($historyItemId)
+deleteHistoryItems(array $historyItemIds)
+deleteHistoryItem($historyItemId)
+downloadHistoryItems(array $historyItemIds)
+textToSpeech($voiceId, array $data)
+textToSpeechWithVoiceId($voiceId, array $data)
+
 Class: MeltProject
 __construct()
 addImage(string $path, int $duration, int $transitionDuration): void
