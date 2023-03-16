@@ -17,6 +17,9 @@
 .env.local
 .env.*.local
 
+# Configuration
+config/config.json
+
 # Generated files
 voices/
 minified/
