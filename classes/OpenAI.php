@@ -49,14 +49,15 @@ class OpenAI {
 	}
 
 	/**
-	 * Generate an image using DALL-E API.
+	 * Generate an image using DALL-E API and save it locally.
 	 *
 	 * @param string $prompt
+	 * @param string $localDirectory
 	 * @param string $size
 	 * @param int $n
 	 * @return array|null
 	 */
-	public function generateImage(string $prompt, string $size = '1024x1024', int $n = 1): ?array {
+	public function generateImage(string $prompt, string $localDirectory, string $size = '1024x1024', int $n = 1): ?array {
 		$data = [
 			'prompt' => $prompt,
 			'n' => $n,
@@ -68,7 +69,14 @@ class OpenAI {
 			$json = json_decode($response->getBody(), true);
 
 			if (json_last_error() === JSON_ERROR_NONE) {
-				return $json;
+				$savedImages = [];
+				foreach ($json['data'] as $imageData) {
+					$imageUrl = $imageData['url'];
+					$localFilePath = $this->saveImage($imageUrl, $localDirectory);
+					$savedImages[] = $localFilePath;
+				}
+
+				return $savedImages;
 			} else {
 				$this->log->error('Failed to decode JSON response', ['json_error' => json_last_error_msg()]);
 
@@ -78,6 +86,30 @@ class OpenAI {
 			$this->log->error('RequestException encountered', ['message' => $e->getMessage()]);
 
 			return null;
+		}
+	}
+
+	/**
+	 * Save an image from a URL to a local file path.
+	 *
+	 * @param string $imageUrl
+	 * @param string $localDirectory
+	 * @return string
+	 */
+	private function saveImage(string $imageUrl, string $localDirectory): string {
+		$imageFileName = basename(parse_url($imageUrl, PHP_URL_PATH));
+		$localFilePath = $localDirectory . '/' . $imageFileName;
+
+		$response = $this->client->get($imageUrl, ['sink' => $localFilePath]);
+
+		if ($response->getStatusCode() == 200) {
+			$this->log->info('Image saved successfully', ['path' => $localFilePath]);
+
+			return $localFilePath;
+		} else {
+			$this->log->error('Failed to save the image', ['status_code' => $response->getStatusCode()]);
+
+			throw new RuntimeException('Failed to save the image: ' . $response->getStatusCode());
 		}
 	}
 }
