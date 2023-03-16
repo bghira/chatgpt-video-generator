@@ -15,6 +15,10 @@ getGeneratedItems(): GuzzleHttp\Psr7\Response
 getAudioFromHistoryItemById(string $historyItemId): GuzzleHttp\Psr7\Response
 deleteHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
 
+Class: AppConfig
+__construct(Psr\Log\LoggerInterface $logger)
+getApiKey(string $className): string
+
 Class: MeltProject
 __construct()
 addImage(string $path, int $duration, int $transitionDuration): void
