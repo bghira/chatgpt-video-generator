@@ -7,6 +7,13 @@ deleteHistoryItem(string $historyItemId): GuzzleHttp\Psr7\Response
 downloadHistoryItems(array $historyItemIds): GuzzleHttp\Psr7\Response
 textToSpeech(string $voiceId, array $data): GuzzleHttp\Psr7\Response
 textToSpeechWithVoiceId(string $voiceId, array $data): GuzzleHttp\Psr7\Response
+deleteSample(string $voiceId, string $sampleId): GuzzleHttp\Psr7\Response
+getAudioFromSample(string $voiceId, string $sampleId): GuzzleHttp\Psr7\Response
+deleteHistoryItemById(string $historyItemId): GuzzleHttp\Psr7\Response
+downloadHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
+getGeneratedItems(): GuzzleHttp\Psr7\Response
+getAudioFromHistoryItemById(string $historyItemId): GuzzleHttp\Psr7\Response
+deleteHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
 
 Class: MeltProject
 __construct()
