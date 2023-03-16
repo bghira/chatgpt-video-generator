@@ -28,8 +28,9 @@ steps:
    contextual information.
 3. Watch as ChatGPT-4 helps you craft new code using the existing classes and
    project structure.
-4. Run the `minify_classes.php` script to minify your classes and keep the
-   project optimized and tidy.
+4. Run the `minify_classes.php` script to minify your classes in a way that
+   they can be provided to ChatGPT for modification without using too many
+   tokens. These classes end up in the `minified` directory.
 
 So, what are you waiting for? Unleash the power of ChatGPT-4 and create some
 incredible video files today! 🚀🌟
