@@ -1,28 +1,46 @@
 <?php
 
-declare(strict_types=1);
+$sourceDir = __DIR__ . '/../classes/';
+$destinationDir = __DIR__ . '/../minified/';
 
-require_once '../vendor/autoload.php';
+$files = scandir($sourceDir);
 
-use MatthiasMullie\Minify;
+foreach ($files as $file) {
+	if (pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+		$sourceFile = $sourceDir . $file;
+		$destinationFile = $destinationDir . pathinfo($file, PATHINFO_FILENAME) . '.min.php';
 
-// Ensure the minified directory exists
-if (!file_exists('../minified/')) {
-	mkdir('../minified/', 0777, true);
+		$sourceCode = file_get_contents($sourceFile);
+		$minifiedCode = minifyPhp($sourceCode);
+		file_put_contents($destinationFile, $minifiedCode);
+	}
 }
 
-// Get a list of PHP files in the classes directory
-$classFiles = glob('../classes/*.php');
+function minifyPhp(string $code): string {
+	$tokens = token_get_all($code);
+	$output = '';
 
-// Minify each class file
-foreach ($classFiles as $file) {
-	$minifier = new Minify\PHP($file);
-	$minifiedCode = $minifier->minify();
+	$prevSpace = false;
+	foreach ($tokens as $token) {
+		if (is_array($token)) {
+			list($id, $text) = $token;
 
-	// Get the original file base name and append .min.php
-	$originalFilename = pathinfo($file, PATHINFO_FILENAME);
-	$minifiedFilename = $originalFilename . '.min.php';
+			if ($id == T_COMMENT || $id == T_DOC_COMMENT) {
+				continue;
+			}
 
-	// Save the minified version in the minified directory
-	file_put_contents('../minified/' . $minifiedFilename, $minifiedCode);
+			$output .= $text;
+			$prevSpace = false;
+		} else {
+			if (!$prevSpace && ($token == ' ' || $token == "\t" || $token == "\n" || $token == "\r")) {
+				$output .= ' ';
+				$prevSpace = true;
+			} else {
+				$output .= $token;
+				$prevSpace = false;
+			}
+		}
+	}
+
+	return $output;
 }
