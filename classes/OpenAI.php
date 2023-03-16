@@ -57,7 +57,7 @@ class OpenAI {
 	 * @param int $n
 	 * @return array|null
 	 */
-	public function generateImage(string $prompt, string $localDirectory, string $size = '1024x1024', int $n = 1): ?array {
+	public function generateImage(string $prompt, string $localDirectory, string $size = '1024x1024', int $n = 4): ?array {
 		$data = [
 			'prompt' => $prompt,
 			'n' => $n,
@@ -66,7 +66,7 @@ class OpenAI {
 
 		try {
 			$response = $this->client->post('images/generations', ['json' => $data]);
-			$json = json_decode($response->getBody(), true);
+			$json = json_decode((string) $response->getBody(), true);
 
 			if (json_last_error() === JSON_ERROR_NONE) {
 				$savedImages = [];
@@ -100,7 +100,8 @@ class OpenAI {
 		$imageFileName = basename(parse_url($imageUrl, PHP_URL_PATH));
 		$localFilePath = $localDirectory . '/' . $imageFileName;
 
-		$response = $this->client->get($imageUrl, ['sink' => $localFilePath]);
+		$client = new Client();
+		$response = $client->get($imageUrl, ['sink' => $localFilePath]);
 
 		if ($response->getStatusCode() == 200) {
 			$this->log->info('Image saved successfully', ['path' => $localFilePath]);
@@ -134,8 +135,8 @@ class OpenAI {
 		];
 
 		try {
-			$response = $this->client->post('completions', ['json' => $data]);
-			$json = json_decode($response->getBody(), true);
+			$response = $this->client->post('chat/completions', ['json' => $data]);
+			$json = json_decode((string) $response->getBody(), true);
 
 			if (json_last_error() === JSON_ERROR_NONE) {
 				$assistantResponse = $json['choices'][0]['message']['content'];
@@ -152,4 +153,44 @@ class OpenAI {
 			return null;
 		}
 	}
+    /**
+     * Generate image variations using DALL-E API and save them locally.
+     *
+     * @param string $imagePath
+     * @param string $localDirectory
+     * @param int $n
+     * @param string $size
+     * @return array|null
+     */
+    public function generateImageVariations(string $imagePath, string $localDirectory, int $n = 4, string $size = '1024x1024'): ?array {
+        $data = [
+            'n' => $n,
+            'size' => $size,
+            'image' => curl_file_create($imagePath)
+        ];
+
+        try {
+            $response = $this->client->post('images/variations', ['multipart' => $data]);
+            $json = json_decode((string) $response->getBody(), true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $savedImages = [];
+                foreach ($json['data'] as $imageData) {
+                    $imageUrl = $imageData['url'];
+                    $localFilePath = $this->saveImage($imageUrl, $localDirectory);
+                    $savedImages[] = $localFilePath;
+                }
+
+                return $savedImages;
+            } else {
+                $this->log->error('Failed to decode JSON response', ['json_error' => json_last_error_msg()]);
+
+                return null;
+            }
+        } catch (RequestException $e) {
+            $this->log->error('RequestException encountered', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
 }
