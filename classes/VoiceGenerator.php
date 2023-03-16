@@ -24,7 +24,7 @@ class VoiceGenerator {
      * @return string The local file path of the downloaded audio file
      * @throws Exception
      */
-    public function generate(string $voiceId, string $message): string {
+    public function generate_and_download(string $voiceId, string $message): string {
         $data = ['text' => $message];
         $response = $this->elevenLabsApi->textToSpeechWithVoiceId($voiceId, $data);
 
