@@ -1,0 +1,10 @@
+Class: MeltProject
+__construct()
+addImage(string $path, int $duration, int $transitionDuration): void
+setVoiceover(string $path): void
+save(string $path): bool
+
+Class: OpenAI
+__construct(string $api_key, ?GuzzleHttp\Client $client, ?Psr\Log\LoggerInterface $log)
+generateImage(string $prompt, string $size, int $n): ?array
+
