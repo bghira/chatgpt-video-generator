@@ -32,4 +32,5 @@ generate_and_download(string $voiceId, string $message): string
 Class: OpenAI
 __construct(string $api_key, ?GuzzleHttp\Client $client, ?Psr\Log\LoggerInterface $log)
 generateImage(string $prompt, string $localDirectory, string $size, int $n): ?array
+generateScript(string $role, string $prompt, int $maxTokens, float $temperature): ?string
 

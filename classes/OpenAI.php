@@ -112,4 +112,44 @@ class OpenAI {
 			throw new RuntimeException('Failed to save the image: ' . $response->getStatusCode());
 		}
 	}
+
+	/**
+	 * Generate a script using the OpenAI GPT-3.5 Turbo model.
+	 *
+	 * @param string $role
+	 * @param string $prompt
+	 * @param int $maxTokens
+	 * @param float $temperature
+	 * @return string|null
+	 */
+	public function generateScript(string $role, string $prompt, int $maxTokens = 3600, float $temperature = 1.0): ?string {
+		$data = [
+			'model' => 'gpt-3.5-turbo',
+			'messages' => [
+				['role' => 'system', 'content' => $role],
+				['role' => 'user', 'content' => $prompt],
+			],
+			'max_tokens' => $maxTokens,
+			'temperature' => $temperature
+		];
+
+		try {
+			$response = $this->client->post('completions', ['json' => $data]);
+			$json = json_decode($response->getBody(), true);
+
+			if (json_last_error() === JSON_ERROR_NONE) {
+				$assistantResponse = $json['choices'][0]['message']['content'];
+
+				return $assistantResponse;
+			} else {
+				$this->log->error('Failed to decode JSON response', ['json_error' => json_last_error_msg()]);
+
+				return null;
+			}
+		} catch (RequestException $e) {
+			$this->log->error('RequestException encountered', ['message' => $e->getMessage()]);
+
+			return null;
+		}
+	}
 }
