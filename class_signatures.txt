@@ -20,10 +20,14 @@ __construct(Psr\Log\LoggerInterface $logger)
 getApiKey(string $className): string
 
 Class: MeltProject
-__construct()
-addImage(string $path, int $duration, int $transitionDuration): void
+__construct(Monolog\Logger $log, int $width, int $height, int $frameRateNum, int $frameRateDen, string $outputFile)
+__toString(): string
+addImage(string $path, int $in, int $out): void
 setVoiceover(string $path): void
-save(string $path): bool
+generateXml(): DOMDocument
+createTractorElement(DOMDocument $xml, string $id): DOMElement
+createTrackElement(DOMDocument $xml, string $producerId): DOMElement
+save(DOMDocument $xml, string $path): bool
 
 Class: VoiceGenerator
 __construct(ElevenLabsApi $elevenLabsApi)
@@ -33,4 +37,5 @@ Class: OpenAI
 __construct(string $api_key, ?GuzzleHttp\Client $client, ?Psr\Log\LoggerInterface $log)
 generateImage(string $prompt, string $localDirectory, string $size, int $n): ?array
 generateScript(string $role, string $prompt, int $maxTokens, float $temperature): ?string
+generateImageVariations(string $imagePath, string $localDirectory, int $n, string $size): ?array
 
