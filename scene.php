@@ -3,9 +3,9 @@
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/autoload.php';
 
+use getID3;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
-use Psr\Log\LoggerInterface;
 
 // Initialize the logger
 $log = new Logger('scene');
@@ -24,31 +24,34 @@ $elevenLabsApi = new ElevenLabsApi($elevenLabsApiKey, null, $log);
 
 $log_data = [];
 $prompt = 'Something short and gentle that will blow everyones socks off about neuralink';
+
 // Generate script if it does not exist
-if (!file_exists(__DIR__ . '/scripts/' . md5($prompt) . '.txt')) {
-	// Generate script
+$script_file = __DIR__ . '/scripts/' . md5($prompt) . '.txt';
+if (!file_exists($script_file)) {
+	$log->info('Generating script...');
 	$role = 'you are a scriptwriter from William S Burroughs era. respond as he would.';
 	$script = $openai->generateScript($role, $prompt);
-	file_put_contents(__DIR__ . '/scripts/' . md5($prompt) . '.txt', $script);
+	file_put_contents($script_file, $script);
 } else {
 	$log_data['txtprompt_search'] = true;
-	$script = file_get_contents(__DIR__ . '/scripts/' . md5($prompt) . '.txt');
+	$script = file_get_contents($script_file);
 }
 
 // Generate image prompt if it does not exist
-if (!file_exists(__DIR__ . '/image_prompts/' . md5($prompt) . '.txt')) {
-	// Generate image prompt
+$image_prompt_file = __DIR__ . '/image_prompts/' . md5($prompt) . '.txt';
+if (!file_exists($image_prompt_file)) {
+	$log->info('Generating image prompt...');
 	$role = 'you are a brilliant AI prompt writer. create an image prompt based on this script.';
 	$image_prompt = $openai->generateScript($role, $script);
-	file_put_contents(__DIR__ . '/image_prompts/' . md5($prompt) . '.txt', $image_prompt);
+	file_put_contents($image_prompt_file, $image_prompt);
 } else {
-	$image_prompt = file_get_contents(__DIR__ . '/image_prompts/' . md5($prompt) . '.txt');
+	$image_prompt = file_get_contents($image_prompt_file);
 	$log_data['imgprompt_search'] = true;
 }
 
 $audio_file = __DIR__ . '/voices/' . md5($prompt) . '.mp3';
 if (!file_exists($audio_file)) {
-	// Generate audio
+	$log->info('Generating audio...');
 	$audio_data = [
 		'text' => $script,
 		'voiceId' => '7ZkBWSrJynvq6BBQZOnf'
@@ -59,51 +62,56 @@ if (!file_exists($audio_file)) {
 	$log_data['audio_cache'] = true;
 }
 
-try {
-	// Calculate the duration of the audio file
-	$getID3 = new getID3;
-	$file_info = $getID3->analyze($audio_file);
-	$audio_duration = $file_info['playtime_seconds'];
-    $seconds_per_image = 6;
-    $frames_per_second = 25;
-    $frames_per_image = $seconds_per_image * $frames_per_second;
-    $number_of_images = intval($audio_duration / $seconds_per_image);
-    $log->info('Creating ' . $number_of_images . ' images for a ' . $audio_duration . ' second audio clip!');
+// Calculate the duration of the audio file
+$log->info('Calculating audio duration...');
+$getID3 = new getID3;
+$file_info = $getID3->analyze($audio_file);
+$audio_duration = $file_info['playtime_seconds'];
 
-	// Generate images if they do not exist
-	if (!file_exists(__DIR__ . '/images/' . md5($prompt))) {
-		mkdir(__DIR__ . '/images/' . md5($prompt));
-		$images = $openai->generateImage($image_prompt, 'images/' . md5($prompt), '1024x1024', $number_of_images);
-		$log_data['images'] = $images;
-	} else {
-		$images = [];
-		$imagesPath = __DIR__ . '/images/' . md5($prompt);
-		$log->info('Checking imagesPath ' . $imagesPath);
-		foreach (glob($imagesPath . '/*.png') as $image) {
-			$images[] = $image;
-		}
-		$log_data['image_search'] = true;
+$seconds_per_image = 6;
+$frames_per_second = 25;
+$frames_per_image = $seconds_per_image * $frames_per_second;
+$number_of_images = intval($audio_duration / $seconds_per_image);
+
+$log->info('Creating ' . $number_of_images . ' images for a ' . $audio_duration . ' second audio clip!');
+
+// Generate images if they do not exist
+$images_dir = __DIR__ . '/images/' . md5($prompt);
+if (!file_exists($images_dir)) {
+	$log->info('Generating images...');
+	mkdir($images_dir);
+	$images = $openai->generateImage($image_prompt, 'images/' . md5($prompt), '1024x1024', $number_of_images);
+	$log_data['images'] = $images;
+} else {
+	$images = [];
+	$imagesPath = $images_dir;
+	$log->info('Checking imagesPath ' . $imagesPath);
+	foreach (glob($imagesPath . '/*.png') as $image) {
+		$images[] = $image;
 	}
-
-	// Create MeltProject
-	echo('Begin the melty' . PHP_EOL);
-	$project = new MeltProject($log, 1920, 1080, $frames_per_second);
-
-	// Add images to project
-	$log->info('Images: ', $images);
-	foreach ($images as $image) {
-		$log->info('Adding image ' . $image);
-		$project->addImage($image, 0, $frames_per_image);
-	}
-
-	// Add audio to project
-	$project->setVoiceover($audio_file);
-	$xml = $project->generateXml();
-	// Save project
-	$xml->save('scene.xml');
-	$log->info('End the melt.');
-} catch (Throwable $ex) {
-	$log->error($ex->getMessage(), $ex->getTrace());
+	$log_data['image_search'] = true;
 }
+
+// Create MeltProject
+$log->info('Begin the melty.');
+$project = new MeltProject($log, 1920, 1080, $frames_per_second);
+
+// Add images to project
+$log->info('Adding images to project...');
+foreach ($images as $image) {
+	$log->info('Adding image ' . $image);
+	$project->addImage($image, 0, $frames_per_image);
+}
+
+// Add audio to project
+$log->info('Adding audio to project...');
+$project->setVoiceover($audio_file);
+$xml = $project->generateXml();
+
+// Save project
+$log->info('Saving project to scene.xml...');
+$xml->save('scene.xml');
+$log->info('End the melt.');
+
 // Log data
 $log->info('Data:', $log_data);
