@@ -3,13 +3,13 @@
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/autoload.php';
 
-use getID3;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
 // Initialize the logger
 $log = new Logger('scene');
 $log->pushHandler(new StreamHandler('logs/scene.log', Logger::DEBUG));
+$log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
 // Initialize AppConfig
 $appConfig = new AppConfig($log);
@@ -36,6 +36,7 @@ if (!file_exists($script_file)) {
 	$log_data['txtprompt_search'] = true;
 	$script = file_get_contents($script_file);
 }
+$log->info('Script: ' . $script);
 
 // Generate image prompt if it does not exist
 $image_prompt_file = __DIR__ . '/image_prompts/' . md5($prompt) . '.txt';
@@ -48,6 +49,7 @@ if (!file_exists($image_prompt_file)) {
 	$image_prompt = file_get_contents($image_prompt_file);
 	$log_data['imgprompt_search'] = true;
 }
+$log->info('Image Prompt: ' . $image_prompt);
 
 $audio_file = __DIR__ . '/voices/' . md5($prompt) . '.mp3';
 if (!file_exists($audio_file)) {
@@ -80,7 +82,7 @@ $images_dir = __DIR__ . '/images/' . md5($prompt);
 if (!file_exists($images_dir)) {
 	$log->info('Generating images...');
 	mkdir($images_dir);
-	$images = $openai->generateImage($image_prompt, 'images/' . md5($prompt), '1024x1024', $number_of_images);
+	$images = $openai->generateImage($image_prompt, __DIR__ . DIRECTORY_SEPARATOR . 'images/' . md5($prompt), '1024x1024', $number_of_images);
 	$log_data['images'] = $images;
 } else {
 	$images = [];
