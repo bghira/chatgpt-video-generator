@@ -1,158 +1,282 @@
 <?php
-declare(strict_types=1);
+
 use Monolog\Logger;
 
-/**
- * Class MeltProject
- */
-class MeltProject {
-	/**
-	 * @var DOMDocument
-	 */
-	private $xml;
+class MeltProject
+{
+    private int $width;
+    private int $height;
+    private int $frameRateNum;
+    private int $frameRateDen;
+    private ?string $audioFile = null;
+    private string $outputFile;
+    private array $images;
+	private Logger $log;
 
-	/**
-	 * @var DOMElement
-	 */
-	private $playlist;
-
-	/**
-	 * @var int
-	 */
-	private $imageIndex;
-
-	/**
-	 * @var Logger
-	 */
-	private $log;
-
-	/**
-	 * MeltProject constructor.
-	 */
-	public function __construct(Logger $log) {
+    public function __construct(Logger $log, int $width = 1920, int $height = 1080, int $frameRateNum = 25, int $frameRateDen = 1, string $outputFile = './scene.mp4')
+    {
 		$this->log = $log;
-		$this->xml = new DOMDocument('1.0', 'utf-8');
-		$this->xml->formatOutput = true;
-		$this->initMelt();
-		$this->imageIndex = 1;
-		$this->log->info('Initialized DOMDocument');
+		$this->width = $width;
+        $this->height = $height;
+        $this->frameRateNum = $frameRateNum;
+        $this->frameRateDen = $frameRateDen;
+        $this->outputFile = $outputFile;
+        $this->images = [];
+		$this->log->info('Initialized MeltProject ' . $this);
+    }
+
+	public function __toString() {
+		return 'width:'.$this->width.' height:'.$this->height . ' framerate:'. $this->frameRateNum . ' outputFile ' . $this->outputFile;
 	}
 
-	/**
-	 * Initialize MLT XML structure.
-	 */
-	private function initMelt(): void {
-		$mlt = $this->xml->createElement('mlt');
-		$this->xml->appendChild($mlt);
+    public function addImage(string $path, int $in, int $out): void
+    {
+        $this->images[] = [
+            'path' => $path,
+            'in' => $in,
+            'out' => $out
+        ];
+		$this->log->info('Adding image', end($this->images));
+    }
+    /**
+     * Set the voiceover audio track.
+     *
+     * @param string $path
+     */
+    public function setVoiceover(string $path): void
+    {
+        $this->audioFile = $path;
+		$this->log->info('Adding audio track: ' . $path);
+    }
 
-		$playlist = $this->xml->createElement('playlist');
-		$playlist->setAttribute('id', 'image_playlist');
-		$mlt->appendChild($playlist);
-
-		$this->playlist = $playlist;
-
-		$tractor = $this->xml->createElement('tractor');
-		$tractor->setAttribute('id', 'tractor1');
-		$mlt->appendChild($tractor);
-
-		$multitrack = $this->xml->createElement('multitrack');
-		$tractor->appendChild($multitrack);
-
-		$track = $this->xml->createElement('track');
-		$track->setAttribute('producer', 'image_playlist');
-		$multitrack->appendChild($track);
-		$this->log->info('End ' . __FUNCTION__);
-	}
-
-	/**
-	 * Add an image to the MLT XML.
-	 *
-	 * @param string $path
-	 * @param int $duration
-	 * @param int $transitionDuration
-	 */
-	public function addImage(string $path, int $duration, int $transitionDuration): void {
-		$this->log->info('Running addImage ' . $path);
-		$producerId = 'image' . $this->imageIndex;
-		$in = 0;
-		$out = $duration - 1;
-		$producer = $this->xml->createElement('producer');
-		$producer->setAttribute('id', $producerId);
-		$producer->setAttribute('in', (string)$in);
-		$producer->setAttribute('out', (string)$out);
-		$this->xml->documentElement->appendChild($producer);
-
-		$resource = $this->xml->createElement('property', $path);
-		$resource->setAttribute('name', 'resource');
-		$producer->appendChild($resource);
-
-		$length = $this->xml->createElement('property', (string)$duration);
-		$length->setAttribute('name', 'length');
-		$producer->appendChild($length);
-
-		$entry = $this->xml->createElement('entry');
-		$entry->setAttribute('producer', $producerId);
-		$entry->setAttribute('in', (string)$in);
-		$entry->setAttribute('out', (string)$out);
-		$this->playlist->appendChild($entry);
-
-		if ($this->imageIndex > 1) {
-			$blank = $this->xml->createElement('blank');
-			$blank->setAttribute('length', (string)$transitionDuration);
-			$this->playlist->appendChild($blank);
-
-			$transition = $this->xml->createElement('transition');
-			$transition->setAttribute('in', (string)(($duration - $transitionDuration) * ($this->imageIndex - 1)));
-			$transition->setAttribute('out', (string)($duration * $this->imageIndex - 1));
-			$transition->setAttribute('a_track', '0');
-			$transition->setAttribute('b_track', '0');
-			$this->xml->getElementsByTagName('tractor')->item(0)->appendChild($transition);
-
-			$luma = $this->xml->createElement('property', 'luma');
-			$luma->setAttribute('name', 'mlt_service');
-			$transition->appendChild($luma);
+    /**
+     * Generate the XML document.
+     *
+     * @return DOMDocument The generated XML object.
+     */
+	public function generateXml(): DOMDocument
+	{
+		$xml = new DOMDocument('1.0', 'utf-8');
+		$xml->formatOutput = true;
+	
+		$mlt = $this->createMltElement($xml);
+		$xml->appendChild($mlt);
+	
+		$profile = $this->createProfileElement($xml);
+		$mlt->appendChild($profile);
+	
+		$count = 0;
+		$playlist = $this->createPlaylistElement($xml);
+		foreach ($this->images as $image) {
+			$producer = $this->createProducerElement($xml, $image, $count);
+			$mlt->appendChild($producer);
+	
+			$entry = $this->createEntryElement($xml, $image, $count);
+			$playlist->appendChild($entry);
+	
+			$count++;
 		}
-
-		$this->imageIndex++;
+		$mlt->appendChild($playlist);
+	
+		$tractor0 = $this->createTractorElement($xml, 'tractor0');
+		$mlt->appendChild($tractor0);
+	
+		$multitrack0 = $this->createMultitrackElement($xml);
+		$tractor0->appendChild($multitrack0);
+	
+		$imageTrack = $this->createImageTrackElement($xml);
+		$multitrack0->appendChild($imageTrack);
+	
+		if ($this->audioFile !== null) {
+			$voiceoverProducer = $this->createVoiceoverProducerElement($xml, $this->audioFile);
+			$mlt->appendChild($voiceoverProducer);
+	
+			$voiceoverPlaylist = $this->createVoiceoverPlaylistElement($xml);
+			$mlt->appendChild($voiceoverPlaylist);
+	
+			$voiceoverEntry = $this->createVoiceoverEntryElement($xml);
+			$voiceoverPlaylist->appendChild($voiceoverEntry);
+	
+			$tractor1 = $this->createTractorElement($xml, 'tractor1');
+			$mlt->appendChild($tractor1);
+	
+			$multitrack1 = $this->createMultitrackElement($xml);
+			$tractor1->appendChild($multitrack1);
+	
+			$trackForTractor0 = $this->createTrackElement($xml, 'tractor0');
+			$multitrack1->appendChild($trackForTractor0);
+	
+			$trackForVoiceoverPlaylist = $this->createTrackElement($xml, 'voiceover_playlist');
+			$multitrack1->appendChild($trackForVoiceoverPlaylist);
+		}
+	
+		return $xml;
 	}
 
-	/**
-	 * Set the voiceover audio track.
-	 *
-	 * @param string $path
-	 */
-	public function setVoiceover(string $path): void {
-		$producer = $this->xml->createElement('producer');
-		$producer->setAttribute('id', 'voiceover');
-		$this->xml->documentElement->appendChild($producer);
+    private function createMltElement(DOMDocument $xml): DOMElement
+    {
+        $mlt = $xml->createElement('mlt');
+        $mlt->setAttribute('LC_NUMERIC', 'C');
+        $mlt->setAttribute('producer', 'main_bin');
+        $mlt->setAttribute('version', '7.12.0');
+        $mlt->setAttribute('root', '/home/kash');
+        return $mlt;
+    }
 
-		$resource = $this->xml->createElement('property', $path);
-		$resource->setAttribute('name', 'resource');
-		$producer->appendChild($resource);
+    private function createProfileElement(DOMDocument $xml): DOMElement
+    {
+        $profile = $xml->createElement('profile');
+        $profile->setAttribute('description', 'HD 1080p 25 fps');
+        $profile->setAttribute('width', $this->width);
+        $profile->setAttribute('height', $this->height);
+        $profile->setAttribute('progressive', '1');
+        $profile->setAttribute('sample_aspect_num', '1');
+        $profile->setAttribute('sample_aspect_den', '1');
+        $profile->setAttribute('display_aspect_num', '16');
+        $profile->setAttribute('display_aspect_den', '9');
+        $profile->setAttribute('frame_rate_num', $this->frameRateNum);
+        $profile->setAttribute('frame_rate_den', $this->frameRateDen);
+        $profile->setAttribute('colorspace', '709');
+        return $profile;
+    }
 
-		$playlist = $this->xml->createElement('playlist');
-		$playlist->setAttribute('id', 'voiceover_playlist');
-		$this->xml->documentElement->appendChild($playlist);
+    private function createPlaylistElement(DOMDocument $xml): DOMElement
+    {
+        $playlist = $xml->createElement('playlist');
+        $playlist->setAttribute('id', 'playlist0');
+        return $playlist;
+    }
 
-		$entry = $this->xml->createElement('entry');
-		$entry->setAttribute('producer', 'voiceover');
-		$playlist->appendChild($entry);
+    private function createProducerElement(DOMDocument $xml, array $image, int $count): DOMElement
+    {
+        $producer = $xml->createElement('producer');
+        $producer->setAttribute('id', 'producer' . $count);
+        $producer->setAttribute('in', $image['in']);
+        $producer->setAttribute('out', $image['out']);
 
-		$tractor = $this->xml->getElementsByTagName('tractor')->item(0);
-		$multitrack = $tractor->getElementsByTagName('multitrack')->item(0);
+        $resource = $xml->createElement('property', $image['path']);
+        $resource->setAttribute('name', 'resource');
+        $producer->appendChild($resource);
 
-		$track = $this->xml->createElement('track');
-		$track->setAttribute('producer', 'voiceover_playlist');
-		$multitrack->appendChild($track);
+        $length = $xml->createElement('property', $image['out'] + 1);
+        $length->setAttribute('name', 'length');
+        $producer->appendChild($length);
+
+        return $producer;
+    }
+
+    private function createEntryElement(DOMDocument $xml, array $image, int $count): DOMElement
+    {
+        $entry = $xml->createElement('entry');
+        $entry->setAttribute('producer', 'producer' . $count);
+        $entry->setAttribute('in', $image['in']);
+        $entry->setAttribute('out', $image['out']);
+
+        return $entry;
+    }
+
+	public function createTractorElement(DOMDocument $xml, string $id): DOMElement
+	{
+		$tractor = $xml->createElement('tractor');
+		$tractor->setAttribute('id', $id);
+	
+		return $tractor;
 	}
+	
 
+	public function createTrackElement(DOMDocument $xml, string $producerId): DOMElement
+	{
+		$track = $xml->createElement('track');
+		$track->setAttribute('producer', $producerId);
+	
+		return $track;
+	}
+	
+
+    private function createTransitionElement(DOMDocument $xml): DOMElement
+    {
+        $transition = $xml->createElement('transition');
+        $transition->setAttribute('in', '0');
+        $transition->setAttribute('out', $this->images[0]['out']);
+        $transition->setAttribute('a_track', '0');
+        $transition->setAttribute('b_track', '1');
+        return $transition;
+    }
+
+    private function createTransitionProperties(): array
+    {
+        return [
+            ['mlt_service', 'mix'],
+            ['start', '0'],
+            ['end', $this->images[0]['out']],
+            ['a_track', '0'],
+            ['b_track', '1'],
+        ];
+    }
+
+    private function createPropertyElement(DOMDocument $xml, array $property): DOMElement
+    {
+        $prop = $xml->createElement('property', $property[1]);
+        $prop->setAttribute('name', $property[0]);
+        return $prop;
+    }
+    private function createVoiceoverProducerElement(DOMDocument $xml, string $path): DOMElement
+    {
+        $producer = $xml->createElement('producer');
+        $producer->setAttribute('id', 'voiceover');
+
+        $resource = $xml->createElement('property', $path);
+        $resource->setAttribute('name', 'resource');
+        $producer->appendChild($resource);
+
+        return $producer;
+    }
+
+    private function createVoiceoverPlaylistElement(DOMDocument $xml): DOMElement
+    {
+        $playlist = $xml->createElement('playlist');
+        $playlist->setAttribute('id', 'voiceover_playlist');
+
+        return $playlist;
+    }
+
+    private function createVoiceoverEntryElement(DOMDocument $xml): DOMElement
+    {
+        $entry = $xml->createElement('entry');
+        $entry->setAttribute('producer', 'voiceover');
+
+        return $entry;
+    }
+
+    private function createMultitrackElement(DOMDocument $xml): DOMElement
+    {
+        $multitrack = $xml->createElement('multitrack');
+
+        return $multitrack;
+    }
+
+    private function createVoiceoverTrackElement(DOMDocument $xml): DOMElement
+    {
+        $track = $xml->createElement('track');
+        $track->setAttribute('producer', 'voiceover_playlist');
+
+        return $track;
+    }
+
+    private function createImageTrackElement(DOMDocument $xml): DOMElement
+    {
+        $track = $xml->createElement('track');
+        $track->setAttribute('producer', 'playlist0');
+
+        return $track;
+    }
 	/**
 	 * Save the MLT project to a file.
 	 *
 	 * @param string $path
 	 * @return bool
 	 */
-	public function save(string $path): bool {
-		return $this->xml->save($path) !== false;
+	public function save(DOMDocument $xml, string $path): bool {
+		return $xml->save($path) !== false;
 	}
 }

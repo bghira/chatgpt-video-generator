@@ -60,15 +60,14 @@ if (!file_exists(__DIR__ . '/images/' . md5($prompt))) {
     }
     $log_data['image_search'] = true;
 }
-$audio_file = 'voices/' . md5($prompt) . '.mp3';
-if (!file_exists(__DIR__ . DIRECTORY_SEPARATOR . $audio_file)) {
+$audio_file = __DIR__ . '/voices/' . md5($prompt) . '.mp3';
+if (!file_exists($audio_file)) {
     // Generate audio
     $audio_data = [
         'text' => $script,
         'voiceId' => '7ZkBWSrJynvq6BBQZOnf'
     ];
     $audio_response = $elevenLabsApi->textToSpeechWithVoiceId($audio_data['voiceId'], $audio_data);
-    $audio_file = 'voices/' . md5($prompt) . '.mp3';
     file_put_contents($audio_file, $audio_response->getBody());
 } else {
     $log_data['audio_cache'] = true;
@@ -83,14 +82,14 @@ try {
     $log->info('Images: ', $images);
 	foreach ($images as $image) {
 		$log->info('Adding image ' . $image);
-		$project->addImage($image, 5, 1);
+		$project->addImage($image, 0, 15);
 	}
 
 	// Add audio to project
 	$project->setVoiceover($audio_file);
-
+    $xml = $project->generateXml();
 	// Save project
-	$project->save('scene.xml');
+	$xml->save('scene.xml');
     $log->info('End the melt.');
 } catch (Throwable $ex) {
     $log->error($ex->getMessage(), $ex->getTrace());
