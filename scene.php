@@ -23,14 +23,15 @@ $openai = new OpenAI($openaiApiKey, null, $log);
 $elevenLabsApi = new ElevenLabsApi($elevenLabsApiKey, null, $log);
 
 $log_data = [];
-$prompt = 'A short story about a water buffalo that fell in love.';
+$prompt = 'Tell an exciting story about that time we managed to pull off the big job using only metaphors and colloquialisms.';
+$prompt_role = 'You are Hunter S Thompson. Respond as he would.';
+$illustrator_role = 'You are a historian photographer that avoids controversy, describing a photo of this scene, and what it would look like. Please do not make anyone uncomfortable. Respond as they would.';
 
 // Generate script if it does not exist
 $script_file = __DIR__ . '/scripts/' . md5($prompt) . '.txt';
 if (!file_exists($script_file)) {
 	$log->info('Generating script...');
-	$role = 'You are Sam Kinison. Respond as he would.';
-	$script = $openai->generateScript($role, $prompt);
+	$script = $openai->generateScript($prompt_role, $prompt);
 	file_put_contents($script_file, $script);
 } else {
 	$log_data['txtprompt_search'] = true;
@@ -41,7 +42,7 @@ $log->info('Script: ' . $script);
 // Generate image prompts and store them in a directory
 $image_prompts_dir = __DIR__ . '/image_prompts/' . md5($prompt);
 if (!file_exists($image_prompts_dir)) {
-    mkdir($image_prompts_dir);
+	mkdir($image_prompts_dir);
 }
 
 $image_prompts = [];
@@ -56,18 +57,21 @@ $number_of_images = max(10, $num_lines);
 $ratio = $number_of_images / $num_lines;
 
 foreach ($script_lines as $index => $line) {
-    $image_prompt_file = $image_prompts_dir . '/' . md5($line) . '.txt';
-    if (!file_exists($image_prompt_file)) {
-        $log->info('Generating image prompt for line ' . ($index + 1));
-        $role = 'You are Norman Rockwell, the artist. Respond as he would, creating an AI image prompt based on the text.';
-        $image_prompt = $openai->generateScript($role, $line);
-        file_put_contents($image_prompt_file, $image_prompt);
-    } else {
-        $image_prompt = file_get_contents($image_prompt_file);
-        $log_data['imgprompt_search'][] = 'line_' . ($index + 1);
-    }
-    $image_prompts[] = $image_prompt;
-    $log->info('Image Prompt ' . $index . ': ' . $image_prompt);
+	$image_prompt_file = $image_prompts_dir . '/' . md5($index . $line) . '.txt';
+	if (!file_exists($image_prompt_file)) {
+		$log->info('Generating image prompt for line ' . ($index + 1));
+		$moderation_result = false;
+		while($moderation_result !== true) {
+			$image_prompt = $openai->generateScript($illustrator_role, $line, 100, 1.1);
+			$moderation_result = $openai->moderateContent($image_prompt);
+		}
+		file_put_contents($image_prompt_file, $image_prompt);
+	} else {
+		$image_prompt = file_get_contents($image_prompt_file);
+		$log_data['imgprompt_search'][] = 'line_' . ($index + 1);
+	}
+	$image_prompts[] = $image_prompt;
+	$log->info('Image Prompt ' . $index . ': ' . $image_prompt);
 }
 
 $audio_file = __DIR__ . '/voices/' . md5($prompt) . '.mp3';
@@ -89,53 +93,60 @@ $getID3 = new getID3;
 $file_info = $getID3->analyze($audio_file);
 $audio_duration = $file_info['playtime_seconds'];
 
-$seconds_per_image = 6;
 $frames_per_second = 25;
-$frames_per_image = $seconds_per_image * $frames_per_second;
-$number_of_images = intval($audio_duration / $seconds_per_image);
-$remainder_image = $audio_duration % $seconds_per_image;
-if ($remainder_image > 0) {
-    $log->info('There is a remainder image hang time of ' . $remainder_image . ' so we will add one more to be safe.');
-    $number_of_images++;
+if (!is_array($image_prompts) || count($image_prompts) === 0) {
+	$log->error('No images were available');
+	exit(1);
 }
+$seconds_per_image = ceil($audio_duration / count($image_prompts));
+$frames_per_image = $seconds_per_image * $frames_per_second;
+// Add one for safety.
+$number_of_images = $audio_duration / $seconds_per_image;
 
 $log->info('Creating ' . $number_of_images . ' images for a ' . $audio_duration . ' second audio clip!');
 
 // Generate images based on the image prompts
-$images = [];
+$images = (array) glob(__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . md5($prompt) . DIRECTORY_SEPARATOR . '*');
 $images_dir = __DIR__ . '/images/' . md5($prompt);
 $images_dir_contents = glob($images_dir . DIRECTORY_SEPARATOR . '/*');
-$difference_in_requires = count($image_prompts) - count($images_dir_contents);
-if (!file_exists($images_dir) || empty($images_dir_contents) || $difference_in_requires > 0) {
-    $log->info('Generating images...');
-    mkdir($images_dir);
-    
-    foreach ($image_prompts as $index => $image_prompt) {
-        $num_images_for_prompt = intval(ceil($ratio));
-        $log->info('Generating ' . $num_images_for_prompt . ' images for prompt ' . $index);
-        for ($i = 0; $i < $num_images_for_prompt; $i++) {
-
+$difference_in_requires = $number_of_images - count($images_dir_contents);
+if (!file_exists($images_dir)) {
+	mkdir($images_dir);
+}
+if (empty($images_dir_contents) || $difference_in_requires > 0) {
+	$log->info('Generating images, difference is ' . $difference_in_requires . '.');
+	foreach ($image_prompts as $index => $image_prompt) {
+		$img_prompt = trim($image_prompt);
+		$promptHash = md5($index . $img_prompt);
+		$img_path = __DIR__ . '/images/' . md5($prompt) . DIRECTORY_SEPARATOR . $promptHash;
+		if (file_exists($img_path)) {
+			$log->info('Image prompt ' . $index . ' already had generated image, ' . $img_path .', Skip string length prompt '.strlen($img_prompt).'.');
+			continue;
+		}
+		$num_images_for_prompt = intval(ceil($ratio));
+		$log->info('Generating ' . $num_images_for_prompt . ' images for prompt ' . $index);
+		for ($i = 0; $i < $num_images_for_prompt; $i++) {
 			try {
-				$batch_images = $openai->generateImage($image_prompt, __DIR__ . DIRECTORY_SEPARATOR . 'images/' . md5($prompt), '1024x1024', 1);
-                $images = array_merge($images, $batch_images);
+				$batch_images = $openai->generateImage($index, $img_prompt, __DIR__ . DIRECTORY_SEPARATOR . 'images/' . md5($prompt), '1024x1024', 1);
+				$images = array_merge($images, $batch_images);
 			} catch (Throwable $ex) {
-                $log->info('Prompt: ' . $image_prompt);
-                $log->error('Error generating image for prompt: ' . $ex->getMessage());
-            }
-            $log->info('Finished generating ' . $index);
-        }
-        $log->info('Finished generating all prompts.');
-    }
-
-    $log_data['images'] = $images;
+				$log->info('Prompt: ' . $img_prompt);
+				$msg = $ex->getMessage();
+				$log->error('Error generating image for prompt: ' . json_extract($msg));
+				exit(1);
+			}
+			$log->info('Finished generating ' . $index);
+		}
+		$log->info('Finished generating all prompts.');
+	}
+	$log_data['images'] = $images;
 } else {    // The rest of the code for fetching images from local storage.
-    $log->info('We had enough images generated. Now we need to use them.');
-    $images = glob(__DIR__ . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . md5($prompt) . DIRECTORY_SEPARATOR . '*');
-    $log->info('Pulled images', $images);
+	$log->info('We had enough images generated. Now we need to use them.');
+	$log->info('Pulled images', $images);
 }
 if (count($images) > $number_of_images) {
-    // We have more images than we need.
-    $images = array_slice($images, 0, $number_of_images);
+	// We have more images than we need.
+	$images = array_slice($images, 0, $number_of_images);
 }
 // Create MeltProject
 $log->info('Begin the melty.');
@@ -160,3 +171,19 @@ $log->info('End the melt.');
 
 // Log data
 $log->info('Data:', $log_data);
+
+/**
+ * Extracts JSON object from a string and returns it as a PHP array.
+ *
+ * @param string $message The input string containing the JSON object.
+ * @return ?array A PHP array representation of the JSON object, or null if no JSON object is found.
+ */
+function json_extract(string $message) : ?array {
+	// Use preg_match to match the JSON string in the error message
+	if (preg_match('/\{(?:[^{}]|(?R))*\}/s', $message, $matches)) {
+		// Decode the JSON string to a PHP array
+		$error_data = json_decode($matches[0], true);
+		return $error_data;
+	}
+	return null;
+}
