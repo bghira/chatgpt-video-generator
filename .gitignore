@@ -21,8 +21,13 @@
 config/config.json
 
 # Generated files
-voices/
-minified/
+voices/*
+minified/*
+images/*
+image_prompts/*
+scripts/*
+*.mp4
+scene.xml
 
 # Logs
 *.log

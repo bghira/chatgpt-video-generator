@@ -1,6 +1,6 @@
 <?php
-
 declare(strict_types=1);
+use Monolog\Logger;
 
 /**
  * Class MeltProject
@@ -22,13 +22,20 @@ class MeltProject {
 	private $imageIndex;
 
 	/**
+	 * @var Logger
+	 */
+	private $log;
+
+	/**
 	 * MeltProject constructor.
 	 */
-	public function __construct() {
+	public function __construct(Logger $log) {
+		$this->log = $log;
 		$this->xml = new DOMDocument('1.0', 'utf-8');
 		$this->xml->formatOutput = true;
 		$this->initMelt();
 		$this->imageIndex = 1;
+		$this->log->info('Initialized DOMDocument');
 	}
 
 	/**
@@ -54,6 +61,7 @@ class MeltProject {
 		$track = $this->xml->createElement('track');
 		$track->setAttribute('producer', 'image_playlist');
 		$multitrack->appendChild($track);
+		$this->log->info('End ' . __FUNCTION__);
 	}
 
 	/**
@@ -64,10 +72,10 @@ class MeltProject {
 	 * @param int $transitionDuration
 	 */
 	public function addImage(string $path, int $duration, int $transitionDuration): void {
+		$this->log->info('Running addImage ' . $path);
 		$producerId = 'image' . $this->imageIndex;
 		$in = 0;
 		$out = $duration - 1;
-
 		$producer = $this->xml->createElement('producer');
 		$producer->setAttribute('id', $producerId);
 		$producer->setAttribute('in', (string)$in);
