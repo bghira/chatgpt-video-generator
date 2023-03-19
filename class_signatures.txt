@@ -1,17 +1,92 @@
 Class: ElevenLabsApi
 __construct(string $apiKey, ?GuzzleHttp\Client $client)
 getHistory(): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "items": [
+	 *     {
+	 *       "id": "VW7YKqPnjY4h39yTbx2L",
+	 *       "title": "Generated Audio 1",
+	 *       "duration": 120,
+	 *       "created_at": "2023-03-16T08:00:00Z",
+	 *       "url": "https://download-link.example.com/your_history_item_audio.mp3"
+	 *     },
+	 *     {
+	 *       "id": "AbCDeFgH1I2jK3LmN4O5",
+	 *       "title": "Generated Audio 2",
+	 *       "duration": 90,
+	 *       "created_at": "2023-03-15T08:00:00Z",
+	 *       "url": "https://download-link.example.com/your_history_item_audio2.mp3"
+	 *     }
 getAudioFromHistoryItem(string $historyItemId): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "url": "https://download-link.example.com/your_history_item_audio.mp3"
+	 * }
 deleteHistoryItems(array $historyItemIds): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "status": "success",
+	 *   "message": "Selected history items deleted successfully."
+	 * }
 deleteHistoryItem(string $historyItemId): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "message": "History item deleted successfully"
+	 * }
 downloadHistoryItems(array $historyItemIds): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "url": "https://download-link.example.com/your_downloaded_audio.zip"
+	 * }
 textToSpeech(string $voiceId, array $data): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "history_item_id": "VW7YKqPnjY4h39yTbx2L",
+	 *   "text": "Hello, world!",
+	 *   "options": {
+	 *     "voice": "Joanna",
+	 *     "language": "en-US",
+	 *     "output_format": "mp3"
+	 *   }
 textToSpeechWithVoiceId(string $voiceId, array $data): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "history_item_id": "VW7YKqPnjY4h39yTbx2L",
+	 *   "text": "Hello, world!",
+	 *   "options": {
+	 *     "voice_id": "Joanna",
+	 *     "language": "en-US",
+	 *     "output_format": "mp3"
+	 *   }
 deleteSample(string $voiceId, string $sampleId): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "status": "success",
+	 *   "message": "History item deleted successfully."
+	 * }
 getAudioFromSample(string $voiceId, string $sampleId): GuzzleHttp\Psr7\Response
 deleteHistoryItemById(string $historyItemId): GuzzleHttp\Psr7\Response
 downloadHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
 getGeneratedItems(): GuzzleHttp\Psr7\Response
+  Example Return Value: {
+	 *   "items": [
+	 *     {
+	 *       "id": "VW7YKqPnjY4h39yTbx2L",
+	 *       "created_at": "2023-03-16T12:30:00Z",
+	 *       "request": {
+	 *         "text": "Hello, world!",
+	 *         "voice": "en-US-Wavenet-A",
+	 *         "language_code": "en-US",
+	 *         "speed": 1,
+	 *         "pitch": 0,
+	 *         "volume_gain_db": 0
+	 *       },
+	 *       "duration_seconds": 2.16
+	 *     },
+	 *     {
+	 *       "id": "yv9dA7SxQx2zG8f4Zv1m",
+	 *       "created_at": "2023-03-15T14:45:00Z",
+	 *       "request": {
+	 *         "text": "Good morning!",
+	 *         "voice": "en-US-Wavenet-B",
+	 *         "language_code": "en-US",
+	 *         "speed": 1,
+	 *         "pitch": 0,
+	 *         "volume_gain_db": 0
+	 *       }
 getAudioFromHistoryItemById(string $historyItemId): GuzzleHttp\Psr7\Response
 deleteHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
 
