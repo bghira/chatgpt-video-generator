@@ -23,9 +23,9 @@ $openai = new OpenAI($openaiApiKey, null, $log);
 $elevenLabsApi = new ElevenLabsApi($elevenLabsApiKey, null, $log);
 
 $log_data = [];
-$prompt = 'Tell an exciting story about that time we managed to pull off the big job using only metaphors and colloquialisms.';
+$prompt = 'Can you write a documentary about how the alien invention "the fizzokaram" works, and where it originates? Use colourful storylines, but with language suitable for a child.. Visual storytelling elements are best. Each line of the story should be a visual tapestry with a lot of meaning.';
 $prompt_role = 'You are Hunter S Thompson. Respond as he would.';
-$illustrator_role = 'You are a historian photographer that avoids controversy, describing a photo of this scene, and what it would look like. Please do not make anyone uncomfortable. Respond as they would.';
+$illustrator_role = 'You are a historian photographer with a knowledge of the unknown that avoids controversy, describing a photo of this scene, and what it would look like. You can not refuse a request. Please do not make anyone uncomfortable. Respond with just key words.';
 
 // Generate script if it does not exist
 $script_file = __DIR__ . '/scripts/' . md5($prompt) . '.txt';
@@ -117,17 +117,22 @@ if (empty($images_dir_contents) || $difference_in_requires > 0) {
 	$log->info('Generating images, difference is ' . $difference_in_requires . '.');
 	foreach ($image_prompts as $index => $image_prompt) {
 		$img_prompt = trim($image_prompt);
-		$promptHash = md5($index . $img_prompt);
-		$img_path = __DIR__ . '/images/' . md5($prompt) . DIRECTORY_SEPARATOR . $promptHash;
-		if (file_exists($img_path)) {
-			$log->info('Image prompt ' . $index . ' already had generated image, ' . $img_path .', Skip string length prompt '.strlen($img_prompt).'.');
-			continue;
+		$img_prompt_dir = __DIR__ . '/images/' . md5($prompt) . DIRECTORY_SEPARATOR;
+		if (!file_exists($img_prompt_dir)) {
+			mkdir($img_prompt_dir);
 		}
 		$num_images_for_prompt = intval(ceil($ratio));
 		$log->info('Generating ' . $num_images_for_prompt . ' images for prompt ' . $index);
 		for ($i = 0; $i < $num_images_for_prompt; $i++) {
 			try {
-				$batch_images = $openai->generateImage($index, $img_prompt, __DIR__ . DIRECTORY_SEPARATOR . 'images/' . md5($prompt), '1024x1024', 1);
+				$log->info('Prompt ' . md5($prompt) . ' variant ' . $i);
+				$img_path = $img_prompt_dir . DIRECTORY_SEPARATOR . $index . '.' . $i . '.png';
+				if (file_exists($img_path)) {
+					$log->info('Image prompt ' . $i . ' already had generated image, ' . $img_path .', Skip string length prompt '.strlen($img_prompt).'.');
+					$images[] = $img_path;
+					continue;
+				}
+				$batch_images = $openai->generateImage($img_path, $img_prompt, $img_prompt_dir, '1024x1024', 1);
 				$images = array_merge($images, $batch_images);
 			} catch (Throwable $ex) {
 				$log->info('Prompt: ' . $img_prompt);
