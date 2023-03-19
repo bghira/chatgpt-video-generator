@@ -6,7 +6,10 @@
         "guzzlehttp/guzzle": "^7.0",
         "psr/log": "^1.1",
         "monolog/monolog": "^2.3",
-        "james-heinrich/getid3": "^1.9"
+        "james-heinrich/getid3": "^1.9",
+        "react/socket": "^1.12",
+        "cboden/ratchet": "^0.4.4",
+        "react/event-loop": "^1.2"
     },
     "autoload": {
         "psr-4": {

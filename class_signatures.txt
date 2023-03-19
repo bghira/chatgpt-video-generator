@@ -1,3 +1,13 @@
+Class: WebSocketServerConfig
+__construct(array $config)
+getListenAddress(): string
+getListenPort(): int
+isTlsEnabled(): bool
+hasCertificateFiles(): bool
+generateSelfSignedCertificate(): void
+toArray(): array
+getTlsConfig(): array
+
 Class: ElevenLabsApi
 __construct(string $apiKey, ?GuzzleHttp\Client $client)
 getHistory(): GuzzleHttp\Psr7\Response
@@ -93,6 +103,8 @@ deleteHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
 Class: AppConfig
 __construct(Psr\Log\LoggerInterface $logger)
 getApiKey(string $className): string
+setConfigTree(string $className, array $configTree): void
+getConfigTree(string $className): ?array
 
 Class: MeltProject
 __construct(Monolog\Logger $log, int $width, int $height, int $frameRateNum, int $frameRateDen, string $outputFile)

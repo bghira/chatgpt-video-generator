@@ -30,34 +30,36 @@ class WebSocketServerConfig {
 		return file_exists($this->tlsLocalCert) && file_exists($this->tlsLocalPk);
 	}
 
-	public function generateSelfSignedCertificate(): void {
-		$sslKeyConfig = [
-		'private_key_bits' => 2048,
-		'private_key_type' => OPENSSL_KEYTYPE_RSA,
-	];
-		$sslKey = openssl_pkey_new($sslKeyConfig);
-
-		$sslCertConfig = [
-		'commonName' => $this->listenAddress,
-		'privateKey' => $sslKey,
-	];
-		$sslCert = openssl_csr_new($sslCertConfig);
-
-		$sslCert = openssl_csr_sign($sslCert, null, $sslKey, 365);
-
-		$sslCertPath = __DIR__ . '/../certs/' . $this->listenAddress . '.pem';
-		$sslKeyPath = __DIR__ . '/../certs/' . $this->listenAddress . '.key';
-
-		openssl_x509_export($sslCert, $sslCertOutput);
-		file_put_contents($sslCertPath, $sslCertOutput);
-
-		openssl_pkey_export($sslKey, $sslKeyOutput);
-		file_put_contents($sslKeyPath, $sslKeyOutput);
-
-		$this->tlsLocalCert = $sslCertPath;
-		$this->tlsLocalPk = $sslKeyPath;
-	}
-
+    public function generateSelfSignedCertificate()
+    {
+        // Generate a new private key
+        $privateKey = openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+    
+        // Define the certificate subject
+        $dn = [
+            'countryName' => 'US',
+            'stateOrProvinceName' => 'California',
+            'localityName' => 'San Francisco',
+            'organizationName' => 'My Organization',
+            'organizationalUnitName' => 'My Organizational Unit',
+            'commonName' => 'localhost',
+            'emailAddress' => 'webmaster@example.com',
+        ];
+    
+        // Generate a certificate signing request (CSR)
+        $csr = openssl_csr_new($dn, $privateKey);
+    
+        // Generate a self-signed certificate
+        $certificate = openssl_csr_sign($csr, null, $privateKey, 365);
+    
+        // Save the private key and certificate to files
+        openssl_pkey_export_to_file($privateKey, $this->getTlsConfig()['local_pk']);
+        openssl_x509_export_to_file($certificate, $this->getTlsConfig()['local_cert']);
+    }
+    
 	public function toArray(): array {
 		return [
 		'listen_addr' => $this->listenAddress,

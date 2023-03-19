@@ -28,6 +28,7 @@ image_prompts/*
 scripts/*
 *.mp4
 scene.xml
+config/ssl/*
 
 # Logs
 *.log

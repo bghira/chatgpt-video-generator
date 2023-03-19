@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+</head>
+<body>
+    <h1>WebSocket Test Client</h1>
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+    <div id="status">Disconnected</div>
+    <br>
+    <input type="text" id="message" placeholder="Enter message">
+    <button id="send" disabled>Send</button>
+    <div id="messages"></div>
+
+    <script>
+        const status = document.querySelector('#status');
+        const connectBtn = document.querySelector('#connect');
+        const disconnectBtn = document.querySelector('#disconnect');
+        const sendBtn = document.querySelector('#send');
+        const messageInput = document.querySelector('#message');
+        const messages = document.querySelector('#messages');
+        let socket = null;
+
+        connectBtn.addEventListener('click', () => {
+            socket = new WebSocket('ws://localhost:9090'); // Replace with 'wss://' if using SSL/TLS
+
+            socket.addEventListener('open', () => {
+                console.log('WebSocket opened');
+                status.textContent = 'Connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+            });
+
+            socket.addEventListener('message', (event) => {
+                console.log('WebSocket message:', event.data);
+                const message = document.createElement('div');
+                message.textContent = event.data;
+                messages.appendChild(message);
+            });
+
+            socket.addEventListener('close', (event) => {
+                console.log('WebSocket closed:', event);
+                status.textContent = 'Disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                sendBtn.disabled = true;
+                socket = null;
+            });
+
+            socket.addEventListener('error', (error) => {
+                console.error('WebSocket error:', error);
+            });
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+            }
+        });
+
+        sendBtn.addEventListener('click', () => {
+            if (socket && messageInput.value.trim() !== '') {
+                socket.send(messageInput.value);
+                messageInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
