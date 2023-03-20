@@ -14,7 +14,7 @@ use React\Socket\Server as SocketServer;
 
 // Initialize the logger
 $log = new Logger('websocketserver');
-$log->pushHandler(new StreamHandler(__DIR__ . 'logs/websocket-server.log', Logger::DEBUG));
+$log->pushHandler(new StreamHandler(__DIR__ . DIRECTORY_SEPARATOR . '/logs/websocket-server.log', Logger::DEBUG));
 $log->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 $log->info('Log initiated.');
 
@@ -79,5 +79,15 @@ $loop->addPeriodicTimer(0.1, function () use ($commandLineMessageHandler, $log) 
     }
 });
 
+function errorHandler($severity, $message, $file, $line) {
+    if (error_reporting() & $severity) {
+        throw new ErrorException($message, 0, $severity, $file, $line);
+    }
+}
+
+set_error_handler('errorHandler', E_WARNING);
+
+
 // Run the event loop
 $loop->run();
+
