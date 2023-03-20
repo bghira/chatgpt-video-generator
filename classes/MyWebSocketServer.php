@@ -30,6 +30,7 @@ class MyWebSocketServer implements MessageComponentInterface {
 	public function onMessage(ConnectionInterface $from, $msg) {
 		// Handle incoming messages from WebSocket clients
 		try {
+			$this->log->info('Received message: ' . $msg);
 			$data = json_decode($msg);
 			// $input = $data['input']['data'];
 			// $nodes = $input['childNodes'];
@@ -48,10 +49,9 @@ class MyWebSocketServer implements MessageComponentInterface {
 			// 	}
 			// }
 			$this->log->info('ChatGPT returned message');
-			echo(implode(PHP_EOL . PHP_EOL, $output));
-			$this->log->info('Skipped node types', $skipped_node_types);
+			echo($output . PHP_EOL);
 		} catch (Throwable $ex) {
-			$this->log->error('Could not decode JSON, threw Exception');
+			$this->log->error('Could not decode JSON, threw Exception: ' . $ex->getFile() . ':' . $ex->getLine() . ' ' . $ex->getMessage());
 		}
 		file_put_contents(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'message-data-' . $from->resourceId, $msg);
 	}
@@ -75,25 +75,81 @@ class MyWebSocketServer implements MessageComponentInterface {
 			}
 			$client->send($message);
 		}
-	}	
+	}
 }
 
 function extractTextContent($jsonData) {
-    $extractedText = array();
+	global $log;
+	$extractor = new DOMExtractor($jsonData, $log);
 
-    function traverseNodes($node, &$extractedText) {
-        if ($node->nodeType == 3) { // Check if the node is a text node
-            array_push($extractedText, trim($node->nodeValue));
-        }
+	return $extractor->extract();
+}
 
-        if (isset($node->childNodes) && count($node->childNodes) > 0) {
-            foreach ($node->childNodes as $childNode) {
-                traverseNodes($childNode, $extractedText);
-            }
-        }
-    }
+class DOMExtractor {
+	private $jsonData;
+	private $output;
+	private $blacklist;
+	private $log;
 
-    traverseNodes($jsonData->input->data, $extractedText);
+	public function __construct($jsonData, $log) {
+		$this->jsonData = $jsonData;
+		$this->log = $log;
+		$this->output = '';
+		$this->blacklist = ['Copy code'];
+	}
 
-    return $extractedText;
+	public function extract() {
+		$this->traverseNodes($this->jsonData->input->data);
+
+		return $this->output;
+	}
+
+	private function traverseNodes($node) {
+		if ($node->nodeType == 3) { // Check if the node is a text node
+			if (!$this->containsBlacklistPhrase($node->nodeValue)) {
+				$this->output .= $node->nodeValue;
+			}
+		} elseif (isset($node->tagName)) {
+			$tagName = $node->tagName;
+			if ($tagName == 'CODE') {
+				$this->output .= "```\n";
+				$this->log->info('Found code segment: ' . json_encode($node));
+				foreach ($node->childNodes as $childNode) {
+					$this->traverseNodes($childNode);
+				}
+				$this->output .= "```\n";
+			} elseif ($tagName == 'IMG') {
+				$alt = $node->getAttribute('alt');
+				$src = $node->getAttribute('src');
+				$this->output .= "![{$alt}]({$src})";
+			} elseif ($tagName == 'A') {
+				$href = $node->getAttribute('href');
+				$text = $node->nodeValue;
+				$this->output .= "[{$text}]({$href})";
+			} elseif ($tagName == 'LI') {
+				$this->output .= "- ";
+				foreach ($node->childNodes as $childNode) {
+					$this->traverseNodes($childNode);
+				}
+				$this->output .= "\n";
+			} else {
+				if (isset($node->childNodes) && count($node->childNodes) > 0) {
+					foreach ($node->childNodes as $childNode) {
+						$this->traverseNodes($childNode);
+					}
+				}
+			}
+		}
+	}
+	
+
+	private function containsBlacklistPhrase($text) {
+		foreach ($this->blacklist as $phrase) {
+			if (strpos($text, $phrase) !== false) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
