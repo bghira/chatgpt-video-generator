@@ -1,10 +1,18 @@
+Class: WebSocketHub
+__construct($log)
+onOpen(Ratchet\ConnectionInterface $conn)
+onMessage(Ratchet\ConnectionInterface $from, $msg)
+onClose(Ratchet\ConnectionInterface $conn)
+onError(Ratchet\ConnectionInterface $conn, Exception $e)
+broadcast($message)
+
 Class: WebSocketServerConfig
 __construct(array $config)
 getListenAddress(): string
 getListenPort(): int
 isTlsEnabled(): bool
 hasCertificateFiles(): bool
-generateSelfSignedCertificate(): void
+generateSelfSignedCertificate()
 toArray(): array
 getTlsConfig(): array
 
@@ -100,9 +108,13 @@ getGeneratedItems(): GuzzleHttp\Psr7\Response
 getAudioFromHistoryItemById(string $historyItemId): GuzzleHttp\Psr7\Response
 deleteHistoryItemsByIds(array $historyItemIds): GuzzleHttp\Psr7\Response
 
+Class: CommandLineMessageHandler
+__construct($websocketServer)
+broadcast($message)
+
 Class: AppConfig
 __construct(Psr\Log\LoggerInterface $logger)
-getApiKey(string $className): string
+getApiKey(string $className): array|string
 setConfigTree(string $className, array $configTree): void
 getConfigTree(string $className): ?array
 
@@ -115,6 +127,14 @@ generateXml(): DOMDocument
 createTractorElement(DOMDocument $xml, string $id): DOMElement
 createTrackElement(DOMDocument $xml, string $producerId): DOMElement
 save(DOMDocument $xml, string $path): bool
+
+Class: DOMBlacklist
+__construct(array $blacklist)
+isBlacklisted(string $text): bool
+
+Class: DOMExtractor
+__construct($jsonData, $log)
+extract()
 
 Class: VoiceGenerator
 __construct(ElevenLabsApi $elevenLabsApi)

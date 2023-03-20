@@ -1,9 +1,11 @@
 <?php
-// MyWebSocketServer.php
+/**
+ * A simple PHP Web Socket Server.
+ */
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
-class MyWebSocketServer implements MessageComponentInterface {
+class WebSocketHub implements MessageComponentInterface {
 	protected $clients;
 	protected $addresses = [];
 	protected $log;
@@ -83,73 +85,4 @@ function extractTextContent($jsonData) {
 	$extractor = new DOMExtractor($jsonData, $log);
 
 	return $extractor->extract();
-}
-
-class DOMExtractor {
-	private $jsonData;
-	private $output;
-	private $blacklist;
-	private $log;
-
-	public function __construct($jsonData, $log) {
-		$this->jsonData = $jsonData;
-		$this->log = $log;
-		$this->output = '';
-		$this->blacklist = ['Copy code'];
-	}
-
-	public function extract() {
-		$this->traverseNodes($this->jsonData->input->data);
-
-		return $this->output;
-	}
-
-	private function traverseNodes($node) {
-		if ($node->nodeType == 3) { // Check if the node is a text node
-			if (!$this->containsBlacklistPhrase($node->nodeValue)) {
-				$this->output .= $node->nodeValue;
-			}
-		} elseif (isset($node->tagName)) {
-			$tagName = $node->tagName;
-			if ($tagName == 'CODE') {
-				$this->output .= "```\n";
-				$this->log->info('Found code segment: ' . json_encode($node));
-				foreach ($node->childNodes as $childNode) {
-					$this->traverseNodes($childNode);
-				}
-				$this->output .= "```\n";
-			} elseif ($tagName == 'IMG') {
-				$alt = $node->getAttribute('alt');
-				$src = $node->getAttribute('src');
-				$this->output .= "![{$alt}]({$src})";
-			} elseif ($tagName == 'A') {
-				$href = $node->getAttribute('href');
-				$text = $node->nodeValue;
-				$this->output .= "[{$text}]({$href})";
-			} elseif ($tagName == 'LI') {
-				$this->output .= "- ";
-				foreach ($node->childNodes as $childNode) {
-					$this->traverseNodes($childNode);
-				}
-				$this->output .= "\n";
-			} else {
-				if (isset($node->childNodes) && count($node->childNodes) > 0) {
-					foreach ($node->childNodes as $childNode) {
-						$this->traverseNodes($childNode);
-					}
-				}
-			}
-		}
-	}
-	
-
-	private function containsBlacklistPhrase($text) {
-		foreach ($this->blacklist as $phrase) {
-			if (strpos($text, $phrase) !== false) {
-				return true;
-			}
-		}
-
-		return false;
-	}
 }

@@ -48,7 +48,7 @@ if ($webSocketConfig->isTlsEnabled() && !$webSocketConfig->hasCertificateFiles()
 $loop = Factory::create();
 
 // Create WebSocket server
-$myWebSocketServer = new MyWebSocketServer($log);
+$myWebSocketServer = new WebSocketHub($log);
 
 // Initialize WebSocket server with IoServer
 $server = new Ratchet\Server\IoServer(

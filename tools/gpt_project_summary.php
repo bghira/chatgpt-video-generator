@@ -13,6 +13,8 @@ spl_autoload_register(function ($class) {
 		require_once $classPath;
 	}
 });
+require_once __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . '..'.  DIRECTORY_SEPARATOR . 'autoload.php';
 
 // Initialize DirectoryIterator for the classes directory
 $directory = new DirectoryIterator(__DIR__ . '/../classes');
