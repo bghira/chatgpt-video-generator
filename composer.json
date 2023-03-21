@@ -9,15 +9,14 @@
         "james-heinrich/getid3": "^1.9",
         "react/socket": "^1.12",
         "cboden/ratchet": "^0.4.4",
-        "react/event-loop": "^1.2"
+        "react/event-loop": "^1.2",
+        "phpunit/phpunit": "^10.0",
+        "erusev/parsedown": "^1.7"
     },
     "autoload": {
         "psr-4": {
             "bghira\\": "classes/"
         }
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^9.5"
     },
     "authors": [
         {

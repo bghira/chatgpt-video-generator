@@ -25,13 +25,13 @@
 	/**
 	 * Checks if a given string is blacklisted.
 	 *
-	 * @param string $text The string to check.
+	 * @param ?string $text The string to check.
 	 *
 	 * @return bool Returns true if the string contains a blacklisted phrase, false otherwise.
 	 */
-	public function isBlacklisted(string $text): bool {
+	public function isBlacklisted(?string $text): bool {
 		foreach ($this->blacklist as $phrase) {
-			if (strpos($text, $phrase) !== false) {
+			if (!is_null($phrase) && strpos($text, $phrase) !== false) {
 				return true;
 			}
 		}
